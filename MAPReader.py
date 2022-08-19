@@ -1,3 +1,4 @@
+from html.entities import name2codepoint
 from PIL import Image, ImageDraw
 from math import ceil
 from TilesClass import *
@@ -27,73 +28,65 @@ magic = mapp.read(1)
 revision = mapp.read(4)
 fav = mapp.read(8)
 nameLength = int.from_bytes(mapp.read(1),'little')
-# print(nameLength)
 mapName = [b'0']*(nameLength)
 count = 0
 while count < nameLength :
     char = mapp.read(1)
     mapName[count] = char
     count +=1
-
-# mapNameArray = bytearray(mapName)
-# print(str(mapName))
-print(str(mapName).replace("b'",'').replace("',",'').replace('b"','').replace('",',''))
-
-
 worldID = mapp.read(4)
-
 height = bytearray(mapp.read(4))
 width = bytearray(mapp.read(4))
-# printBytes(height)
-# printBytes(width)
-# widthInt = int.from_bytes([width[2],width[3]],'little')
-# heightInt = int.from_bytes([height[2],height[3]],'little')
 heightInt = int.from_bytes(height,"little")
 widthInt = int.from_bytes(width,'little')
-
-print('height : ',heightInt)
-print('width : ',widthInt)
-print('total Tiles To Read : ', heightInt*widthInt)
-
-
-img = Image.new('RGB',(widthInt,heightInt), color = (255,0,0))
 nbTiles = mapp.read(2)
 nbWalls = mapp.read(2)
 nbLiquids = mapp.read(2)
 nbSkyShade = mapp.read(2)
 nbDirtTypes = mapp.read(2)
 nbRockTypes = mapp.read(2)
-print("tiles: "+str(int.from_bytes(nbTiles,'little')))
-print("nbWalls: "+str(int.from_bytes(nbWalls,'little')))
-print("nbLiquids: "+str(int.from_bytes(nbLiquids,'little')))
-print("nbSkyShade: "+str(int.from_bytes(nbSkyShade,'little')))
-print("nbDirtTypes: "+str(int.from_bytes(nbDirtTypes,'little')))
-print("nbRockTypes: "+str(int.from_bytes(nbRockTypes,'little')))
+print('fileVersion : ', fileVersion[0], '.', fileVersion[1], '.', fileVersion[2], '.', fileVersion[3])
+print(str(magicRelogic).replace("b'",'').replace("',",'').replace('b"','').replace('",','').replace("'",''))
+print('magic : ',int.from_bytes(magic,'little'))
+print('revision : ', int.from_bytes(bytearray(revision),'little'))
+print('isFavorite : ', int.from_bytes(bytearray(fav),'little'))
+print('nameLength : ', nameLength)
+print(str(mapName).replace("b'",'').replace("',",'').replace('b"','').replace('",',''))
+print('world ID : ', int.from_bytes(bytearray(worldID),'little'))
+print('height : ',heightInt)
+print('width : ',widthInt)
+print('total Tiles To Read : ', heightInt*widthInt)
+print("nb of tiles: "+str(int.from_bytes(nbTiles,'little')))
+print("nb of Walls: "+str(int.from_bytes(nbWalls,'little')))
+print("nb of Liquids: "+str(int.from_bytes(nbLiquids,'little')))
+print("nb of SkyShade: "+str(int.from_bytes(nbSkyShade,'little')))
+print("nb of DirtTypes: "+str(int.from_bytes(nbDirtTypes,'little')))
+print("nb of RockTypes: "+str(int.from_bytes(nbRockTypes,'little')))
+
 
 tileIDCountInt = int.from_bytes(nbTiles, 'little')
 wallIDCountInt = int.from_bytes(nbWalls, 'little')
 print("tileidcount: ",tileIDCountInt)
 print("wallidcount: ",wallIDCountInt)
-# # skip = mapp.read(tileIDCountInt+wallIDCountInt)
-bitArrayTileWithMultipleOptions = mapp.read(ceil(tileIDCountInt/8))
-bitArrayWallWithMultipleOptions = mapp.read(ceil(wallIDCountInt/8))
+
+# stuck here
+
+# bitArrayTileWithMultipleOptions = mapp.read(ceil(tileIDCountInt/8))
+# bitArrayWallWithMultipleOptions = mapp.read(ceil(wallIDCountInt/8))
 
 bytesRead = (ceil(tileIDCountInt/8) + ceil(wallIDCountInt/8))
-print(bytesRead,' bytes read')
-# n = 2
-# skip = mapp.read((189 - bytesRead - n))
-# print(n," bytes before")
-# printBytes(bytearray(mapp.read(n)))
-# print(n," bytes after")
-# printBytes(bytearray(mapp.read(n)))
-# print("")
-# print('looking for')
-# print(format(0xed,'08b'))
-# quit()
+
+print('bytes to read for tile : ', ceil(tileIDCountInt/8))
+print('bytes to read for wall : ', ceil(wallIDCountInt/8))
+print(bytesRead,' total')
+n = 120
+print(n," next bytes")
+printBytes(bytearray(mapp.read(n)))
+quit()
 
 skip = mapp.read((189 - bytesRead))
 
-
+# to here
 
 print("decoding tiles")
 newTilesCovered = 0
@@ -126,7 +119,7 @@ print('')
 print('length of tile list : ',len(tiles))
 
 
-
+mapp.close()
 quit()
 
 testn = 500000
@@ -135,6 +128,8 @@ for i in range(testn):
         printProgressBar(i,testn,'',str(i+1) + '/' + str(testn) + ' tiles', length = 20)
 
 print('')
+
+img = Image.new('RGB',(widthInt,heightInt), color = (255,0,0))
 # for reference -> 
 # 
 # bitwise operations
