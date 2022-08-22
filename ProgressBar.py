@@ -27,9 +27,9 @@ def UpdateProgress(i, length):
     if modu == 0:
         modu = 1
     if not (i+1)%modu:
-        printProgressBar(i+1,length,'',str(i+1) + '/' + str(length) + ' extra tiles', length = 20)
+        printProgressBar(i+1,length,'',str(i+1) + '/' + str(length) + ' pixels', length = 20)
     elif i+1 == length:
-        printProgressBar(i+1,length,'',str(i+1) + '/' + str(length) + ' extra tiles', length = 20)
+        printProgressBar(i+1,length,'',str(i+1) + '/' + str(length) + ' pixels', length = 20)
 
 
 

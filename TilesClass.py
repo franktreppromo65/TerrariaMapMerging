@@ -19,6 +19,7 @@ mask8 = int('1000 0000'.replace(' ',''), 2)
 #               TILES               #
 #####################################
 class Tile:
+    """ only used if in tileHeader RLE count"""
     def __init__(self, TileHeader, isHeader):
         self.colorID = TileHeader.colorID
         self.specificTileType = TileHeader.tileTypeSpecific
@@ -27,23 +28,23 @@ class Tile:
         if isHeader:
             self.lightLevel = TileHeader.lightLevel
         else:
-            self.lightLevel = self.GetLightLevel(TileHeader.mapFile)
+            self.lightLevel = self.GetLightLevel(TileHeader.mapFile,TileHeader.lightLevel)
 
-    def GetLightLevel(self, mapFile):
-        if self.tileClassification == 000 or not self.tileLightIsSaved:
-            return 0
+    def GetLightLevel(self, mapFile, default):
+        if self.tileLightIsSaved:
+            return mapFile.read(1)[0]
         else:
-            return int.from_bytes(mapFile.read(1),'little')
+            return default
 
 
 class TileHeader:
     
 
-    def __init__(self, data, mapFile):
-        self.PrintInfo = True
+    def __init__(self, data, mapFile, infoPrint):
+        self.PrintInfo = infoPrint
         self.mapFile = mapFile
 
-        self.data = int.from_bytes(data,'little')
+        self.data = data
         if self.PrintInfo:
             print('byte to decode : ',format(self.data,'08b'))
 
@@ -54,9 +55,9 @@ class TileHeader:
 
         
     def ParseData(self):
-        self.colorExist = (self.data & mask1)  
-        self.tileClassification = (self.data & (mask4|mask3|mask2))>> 1 
-        self.tileTypeFieldlength = (self.data & mask5)>> 4 
+        self.colorExist = (self.data & mask1)                           # has paint
+        self.tileClassification = (self.data & (mask4|mask3|mask2))>> 1 # classification, see : GetTileClassificationTypeString()
+        self.tileTypeFieldlengthIsWord = (self.data & mask5)>> 4        # word type
         self.tileLightIsSaved = (self.data & mask6)>> 5  # 255 otherwise
         self.RLESizeIsByte = (self.data & mask7)>> 6 # RLE is 1 byte
         self.RLESizeIsWord = (self.data & mask8) >> 7 # RLE is 2 bytes
@@ -88,33 +89,32 @@ class TileHeader:
     def GetSpecificTileType(self):
         """if the map tile classification is either a tile, wall, dirt, or rock,
          a BYTE or WORD (depending on flags) is read to better specify the map tile type."""
-        if self.tileClassification == 000:
-            self.tileTypeSpecific = 0
-        elif self.tileTypeFieldlength == 1:
-            self.tileTypeSpecific = int.from_bytes(self.mapFile.read(2),'little')
+        if self.tileClassification in {0b001, 0b010, 0b111}:
+            if self.tileTypeFieldlengthIsWord:
+                self.tileTypeSpecific = int.from_bytes(self.mapFile.read(2),'little')
+            else:
+                self.tileTypeSpecific = int.from_bytes(self.mapFile.read(1),'little')
         else:
-            self.tileTypeSpecific = int.from_bytes(self.mapFile.read(1),'little')
+            self.tileTypeSpecific = 0
 
     def GetLightLevel(self):
         """if the light level is saved,
          it is read (as a BYTE).
          But if Tile light level was not saved (assume 255, unless Unknown tile type)"""
         if self.tileLightIsSaved:
-            self.lightLevel = int.from_bytes(self.mapFile.read(1),'little')
+            self.lightLevel = self.mapFile.read(1)[0]
+        elif self.tileClassification == 0b000:
+            self.lightLevel = 0
         else:
-            if self.tileClassification == 0:
-                self.lightLevel = 0
-            else:
-                self.lightLevel = 255
+            self.lightLevel = 255
 
     def GetRLECount(self):
         """ if a RLE count is saved, it is read (BYTE or WORD)."""
-        if self.RLESizeIsByte and self.RLESizeIsWord:
-            self.RLECount = int.from_bytes(self.mapFile.read(3),'little')
-        elif self.RLESizeIsByte:
-            self.RLECount = int.from_bytes(self.mapFile.read(1),'little')
-        elif self.RLESizeIsWord:
-            self.RLECount = int.from_bytes(self.mapFile.read(2),'little')
+        if self.RLESizeIsByte or self.RLESizeIsWord:
+            if self.RLESizeIsByte:
+                self.RLECount = int.from_bytes(self.mapFile.read(1),'little')
+            else :
+                self.RLECount = int.from_bytes(self.mapFile.read(2),'little')
         else:
             self.RLECount = 0
     
@@ -126,7 +126,7 @@ class TileHeader:
             print('colorID : ',self.colorID)
             print('')
             print('tileClassification : '+ self.GetTileClassificationTypeString())
-            print('tileTypeFieldlengthIsWord : ', self.tileTypeFieldlength)
+            print('tileTypeFieldlengthIsWord : ', self.tileTypeFieldlengthIsWord)
             print('tileTypeSpecific : ',self.tileTypeSpecific)
             print('')
             print('lightIsSaved : ', self.tileLightIsSaved)
@@ -148,8 +148,9 @@ class TileHeader:
         options = { 0b000   :   'unknown',
                     0b001   :   'tile',
                     0b010   :   'wall',
+                    0b011   :   'water',
                     0b100   :   'lava',
                     0b101   :   'honey',
                     0b110   :   'sky or hell',
                     0b111   :   'dirt or rock',}
-        return options.get(self.tileClassification)
+        return str(options.get(self.tileClassification))
