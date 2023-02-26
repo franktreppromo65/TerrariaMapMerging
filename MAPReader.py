@@ -20,12 +20,39 @@ def printBytes(bs):
 
 
 class Tmap:
+    def Merge2Maps(mapp1, mapp2, printInfo = True):
+        mappMerged = mapp1
+        tileIndex = 0
+        x = 0
+        y = 0
+        for tile in mapp1.tiles:
+            if printInfo:
+                UpdateProgress(x+y*mapp1.widthInt,mapp1.heightInt*mapp1.widthInt)
+
+            tileMap1 = tile
+            tileMap2 = mapp2.tiles[tileIndex]
+            tileMapMerged = tileMap1
+
+            if tileMap1 != tileMap2:
+                if tileMap2.tileClassification != 0b000:
+                    tileMapMerged = tileMap2
+
+            mappMerged.tiles[tileIndex] = tileMapMerged
+
+            tileIndex+=1
+            x += 1
+            if x == mapp1.widthInt:
+                y += 1
+                x = 0
+
+        return mappMerged
+
     def __init__(self, mapp):
 
         self.printInfo = True
         self.UnPackHeader(mapp)
         self.DecodeTiles(mapp)
-        self.GenerateImage()
+        self.GenerateImageFromSelf()
             
         
     def UnPackHeader(self, mapp):
@@ -190,8 +217,7 @@ class Tmap:
             byte = self.wallWithOptionsIDAndNumberOfOptions[count]
             file.write(byte[1].to_bytes(1,'little'))
             count +=1
-
-        file.close()
+        return
 
 
     def DecodeTiles(self, mapp):
@@ -224,12 +250,50 @@ class Tmap:
                     UpdateProgress(len(self.tiles),self.heightInt*self.widthInt)
                 #updating ProgressBar for each segments (realy not efficient, it was used just for testing)
                 # UpdateProgress(i,tileHeader.RLECount)
+        return
 
-    def GenerateImage(self):
+    def EncodeTiles(self, file):
+        print("encoding tiles")
+        encodedTiles = ''
+
+        # TODO, inversing the encoding
+        
+        newTilesCovered = 0
+        self.tiles = []
+        while True:
+            try :
+                data = uncompressedData.read(1)[0]
+            except:
+                # eof
+                break
+            
+            tileHeader = TileHeader(data,uncompressedData, False)
+            firstTile = Tile(tileHeader,True)
+            self.tiles.append(firstTile)
+
+            #if RLE was used, the light level was saved, and the tile isn't Unknown,
+            #  a number of extra BYTEs are read, corresponding to the light level for each RLE-duplicated tile, in order."""
+            for i in range(tileHeader.RLECount): # fear each extre tiles, and if RLE is used is already defined in class
+                self.tiles.append(Tile(tileHeader,False)) # light level saved check is done in class as well as for the unknown type
+                
+                if self.printInfo:
+                    UpdateProgress(len(self.tiles),self.heightInt*self.widthInt)
+                #updating ProgressBar for each segments (realy not efficient, it was used just for testing)
+                # UpdateProgress(i,tileHeader.RLECount)
+
+
+        print("compressing Data")
+        # https://www.delftstack.com/howto/python/python-zlib/#:~:text=of%20the%20data.-,Decompress%20Data%20With%20the%20zlib.,%3B%20data%20%2C%20wbits%20%2C%20and%20bufsize
+        uncompressedData = io.BytesIO(zlib.compress(encodedTiles,wbits=-15))
+        
+        
+
+        return
+
+    def GenerateImageFromSelf(self):
         print('')
         print('')
         print('generating image from tiles')
-
 
         def GetColor(classification):
             options = { 0b000   :   (0,0,0),
@@ -241,7 +305,6 @@ class Tmap:
                         0b110   :   (100,100,255),
                         0b111   :   (100,200,200),}
             return options.get(classification)
-
 
         img = Image.new('RGB',(self.widthInt,self.heightInt), color = (0,0,0))
         x = 0
@@ -265,6 +328,46 @@ class Tmap:
 
         img.show()
         img.save('lightmap.png')
+        return
+
+    def GenerateImageFromMap(mapp):
+        print('')
+        print('')
+        print('generating image from tiles')
+        def GetColor(classification):
+            options = { 0b000   :   (0,0,0),
+                        0b001   :   (200,200,100),
+                        0b010   :   (50,50,50),
+                        0b011   :   (0,0,128),
+                        0b100   :   (255,100,100),
+                        0b101   :   (100,255,255),
+                        0b110   :   (100,100,255),
+                        0b111   :   (100,200,200),}
+            return options.get(classification)
+
+        img = Image.new('RGB',(mapp.widthInt,mapp.heightInt), color = (0,0,0))
+        x = 0
+        y = 0
+        for tile in mapp.tiles:
+            if mapp.printInfo:
+                UpdateProgress(x+y*mapp.widthInt,mapp.heightInt*mapp.widthInt)
+
+            light = tile.lightLevel/255.0
+            colors = GetColor(tile.tileClassification)
+            for c in colors:
+                c *= light
+            
+            
+            img.putpixel((x,y),colors)
+            x += 1
+            if x == mapp.widthInt:
+                y += 1
+                x = 0
+
+
+        img.show()
+        img.save('lightmapMerged.png')
+        return
 
 # for reference -> 
 # 
